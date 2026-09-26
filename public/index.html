@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Human Agent Control — the hourglass, and the human in the middle</title>
+<meta name="description" content="How does a human stay in control when agents are faster than they are? A one-minute hourglass simulation, and the eight principles that keep the human the last instance. A simulation, not real data.">
+<style>
+/* ============================================================
+   1 · TOKENS
+   ============================================================ */
+:root{
+  --paper:#efe8d6;          /* aged ivory — never pure white */
+  --paper-2:#e7dfc9;        /* one step down, for alternation */
+  --plate:#f7f2e4;          /* inset "plate" */
+  --ink:#1b1913;            /* iron-gall */
+  --ink-2:#564f3f;          /* secondary text */
+  --line:rgba(27,25,19,.34);
+  --line-soft:rgba(27,25,19,.15);
+  --accent:#126056;         /* verdigris — the only accent */
+  --accent-ink:#0d4a43;
+  --accent-soft:rgba(18,96,86,.12);
+  --hatch:rgba(27,25,19,.26);
+  --tooth:rgba(27,25,19,.055);
+  --serif:"Iowan Old Style","Charter","Bitstream Charter","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Times New Roman",serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,"DejaVu Sans Mono","Liberation Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#141310;
+    --paper-2:#1a1813;
+    --plate:#201d16;
+    --ink:#e6ddc8;          /* parchment — never pure white */
+    --ink-2:#a79d85;
+    --line:rgba(230,221,200,.30);
+    --line-soft:rgba(230,221,200,.14);
+    --accent:#5ec3a8;
+    --accent-ink:#86d6bf;
+    --accent-soft:rgba(94,195,168,.14);
+    --hatch:rgba(230,221,200,.24);
+    --tooth:rgba(230,221,200,.05);
+  }
+}
+
+/* ============================================================
+   2 · BASE
+   ============================================================ */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--serif);
+  font-size:1.0625rem;
+  line-height:1.6;
+  overflow-wrap:break-word;
+}
+/* engraved tooth: one fixed diagonal hatch over the whole page, like plate tone */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:repeating-linear-gradient(45deg,var(--tooth) 0 1px,transparent 1px 6px);
+}
+header,main,footer{position:relative;z-index:1}
+h1,h2,h3,h4{font-weight:400;line-height:1.1;letter-spacing:-.014em;margin:0}
+p{margin:0 0 1em}
+p:last-child{margin-bottom:0}
+ul,ol{margin:0;padding:0}
+a{color:inherit}
+svg{display:block;max-width:100%}
+img,video{max-width:100%}
+::selection{background:var(--accent-soft);color:var(--ink)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+.defs{position:absolute;width:0;height:0;overflow:hidden}
+.skip{
+  position:absolute;left:-9999px;top:0;z-index:9;
+  background:var(--ink);color:var(--paper);
+  font-family:var(--mono);font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;
+  padding:.8rem 1rem;text-decoration:none;
+}
+.skip:focus{left:.5rem;top:.5rem}
+
+.wrap{width:min(100% - 2.1rem,66rem);margin-inline:auto}
+.col{max-width:42rem}
+
+/* engraved plate labels */
+.stamp,.tag,.eyebrow{
+  font-family:var(--mono);
+  font-size:.7rem;
+  letter-spacing:.17em;
+  text-transform:uppercase;
+  color:var(--ink-2);
+  margin:0 0 1rem;
+}
+.stamp b,.eyebrow b{color:var(--accent);font-weight:400}
+.hair{border:0;border-top:1px solid var(--line);margin:0}
+.hair.thick{border-top:2px solid var(--ink)}
+
+/* ============================================================
+   3 · TOP BAR
+   ============================================================ */
+.topbar{border-bottom:1px solid var(--line);background:var(--paper)}
+.topbar .wrap{display:flex;flex-wrap:wrap;gap:.4rem 1.4rem;align-items:baseline;justify-content:space-between;padding:.7rem 0}
+.brand{
+  font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+  text-decoration:none;white-space:nowrap;
+}
+.brand i{color:var(--accent);font-style:normal}
+.nav{display:flex;flex-wrap:wrap;gap:.2rem 1rem;font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase}
+.nav a{display:inline-block;color:var(--ink-2);text-decoration:none;border-bottom:1px solid transparent;padding:.35rem 0}
+.nav a:hover,.nav a:focus-visible{color:var(--ink);border-bottom-color:var(--accent)}
+
+/* ============================================================
+   4 · HERO
+   ============================================================ */
+.hero{padding:2.75rem 0 2.5rem;border-bottom:2px solid var(--ink)}
+.hero h1{font-size:clamp(2rem,7.4vw,3.5rem);max-width:19ch;margin-bottom:1.25rem}
+.hero h1 em{font-style:italic;color:var(--accent)}
+.lede{font-size:clamp(1.05rem,2.3vw,1.22rem);max-width:44ch}
+.clarifier{
+  margin:1.6rem 0 0;padding:.95rem 1.05rem;
+  border:1px solid var(--line);border-left:3px solid var(--accent);
+  background:var(--plate);max-width:42rem;
+}
+.clarifier .nots{font-family:var(--mono);font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin:0 0 .45rem}
+.clarifier p{margin:0;font-size:.98rem}
+.said{
+  margin:1.5rem 0 0;font-style:italic;font-size:clamp(1.08rem,2.6vw,1.3rem);
+  max-width:32ch;color:var(--ink);
+}
+.said span{display:block;margin-top:.4rem;font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);font-style:normal}
+.owner-line{
+  margin:1.5rem 0 0;font-style:italic;color:var(--accent);
+  font-size:clamp(1.02rem,2.3vw,1.16rem);max-width:34ch;
+}
+.cta{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.9rem}
+.btn{
+  display:inline-block;font-family:var(--mono);font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;
+  text-decoration:none;padding:.75rem 1rem;border:1px solid var(--ink);
+  background:var(--ink);color:var(--paper);cursor:pointer;
+}
+.btn:hover,.btn:focus-visible{background:var(--accent);border-color:var(--accent);color:var(--plate)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover,.btn.ghost:focus-visible{border-color:var(--accent);color:var(--accent);background:transparent}
+
+/* ============================================================
+   5 · THE FIGURE — engraved plate
+   ============================================================ */
+.fig{margin:2.25rem 0 0;padding:1.1rem .9rem .9rem;background:var(--plate);border:1px solid var(--line);
+  box-shadow:inset 0 0 0 3px var(--paper),inset 0 0 0 4px var(--line-soft)}
+.fig svg{width:100%;max-width:17rem;height:auto;margin-inline:auto}
+.fig figcaption{
+  font-family:var(--mono);font-size:.66rem;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--ink-2);text-align:center;margin-top:.85rem;padding-top:.65rem;border-top:1px solid var(--line-soft);
+}
+.hg-outline{fill:none;stroke:var(--ink);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round}
+.hg-cap{stroke:var(--ink);stroke-width:2.6;stroke-linecap:round}
+.hg-hatchline{stroke:var(--hatch);stroke-width:1.15}
+.hg-fill-top{fill:url(#hg-hatch)}
+.hg-fill-bot{fill:var(--accent-soft)}
+.hg-surface{stroke:var(--ink);stroke-width:1.4;opacity:.55}
+.hg-you{fill:var(--accent)}
+.hg-youline{stroke:var(--accent);stroke-width:1.2;stroke-dasharray:2.5 3.5}
+.hg-youlabel{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;fill:var(--accent)}
+.hg-figlabel{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;fill:var(--ink-2)}
+
+/* ============================================================
+   6 · SECTIONS
+   ============================================================ */
+section{padding:2.9rem 0;border-bottom:1px solid var(--line)}
+section.alt{background:var(--paper-2)}
+.sec-head{margin-bottom:2rem}
+.sec-head h2{font-size:clamp(1.6rem,4.6vw,2.45rem);max-width:22ch}
+.sec-head .sub{margin-top:.8rem;color:var(--ink-2);max-width:48ch;font-size:1rem}
+
+/* the legend: the five moves, and what each one costs */
+.moves{list-style:none;border-top:1px solid var(--ink);max-width:46rem}
+.moves li{display:grid;grid-template-columns:1fr;gap:.15rem .9rem;padding:.85rem 0;border-bottom:1px solid var(--line-soft)}
+.moves .mv{font-size:1.02rem}
+.moves .mv b{font-weight:400;color:var(--accent)}
+.moves .cost{color:var(--ink-2);font-size:.94rem}
+.moves .pr{font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+
+/* ============================================================
+   8 · SYMPTOMS
+   ============================================================ */
+.symptoms{list-style:none;max-width:46rem;border-top:1px solid var(--ink)}
+.symptoms li{padding:.8rem 0 .8rem 1.6rem;border-bottom:1px solid var(--line-soft);position:relative;font-size:1.02rem}
+.symptoms li::before{
+  content:"?";position:absolute;left:0;top:.8rem;
+  font-family:var(--mono);font-size:.85rem;color:var(--accent);
+}
+
+/* ============================================================
+   9 · INCIDENTS
+   ============================================================ */
+.incidents{list-style:none;max-width:48rem}
+.incident{padding:1.4rem 0;border-top:1px solid var(--line)}
+.incident:last-child{border-bottom:1px solid var(--line)}
+.incident .when{font-family:var(--mono);font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-2);margin:0 0 .5rem}
+.incident h3{font-size:clamp(1.15rem,3vw,1.4rem);margin-bottom:.6rem}
+.incident p{max-width:54ch}
+.incident .fix{margin-top:.7rem;padding-left:.85rem;border-left:2px solid var(--accent);color:var(--ink)}
+.incident .fix b{font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:400;display:block;margin-bottom:.25rem}
+
+/* ============================================================
+   10 · THESIS
+   ============================================================ */
+.thesis{font-size:clamp(1.18rem,3.2vw,1.6rem);line-height:1.38;max-width:40ch;margin:0}
+.thesis .attr{display:block;margin-top:1rem;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);line-height:1.5}
+.core-line{margin:1.75rem 0 0;font-style:italic;color:var(--accent);font-size:clamp(1.05rem,2.4vw,1.25rem);max-width:36ch}
+
+/* ============================================================
+   11 · PRINCIPLES
+   ============================================================ */
+.principles{list-style:none;max-width:54rem}
+.principle{display:grid;grid-template-columns:1fr;gap:.4rem;padding:1.6rem 0;border-top:1px solid var(--line)}
+.principle:last-child{border-bottom:1px solid var(--line)}
+.principle .pnum{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;color:var(--accent);margin:0}
+.principle h3{font-size:clamp(1.18rem,3.3vw,1.5rem);margin:.1rem 0 .65rem;max-width:28ch}
+.principle p{max-width:56ch;font-size:1rem}
+.tagline-m{
+  font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-2);display:block;margin:0 0 .4rem;
+}
+.at-neck{margin-top:.85rem;padding-left:.85rem;border-left:2px solid var(--line);font-size:.93rem;color:var(--ink-2);max-width:54ch}
+.at-neck b{font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:400;margin-right:.4rem}
+.principle.key{background:var(--accent-soft);box-shadow:inset .45rem 0 0 var(--accent);padding-inline:1rem .5rem;margin-inline:-1rem}
+.principle.key h3{font-style:italic}
+.split{display:grid;gap:.9rem;margin-top:.5rem}
+.split div{border-left:2px solid var(--line);padding-left:.85rem;max-width:52ch}
+.split div.stop{border-left-color:var(--accent)}
+.split b{display:block;font-family:var(--mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:400;margin-bottom:.3rem}
+.draft-flag{
+  display:inline-block;font-family:var(--mono);font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;
+  border:1px solid var(--accent);color:var(--accent);padding:.15rem .45rem;margin-left:.5rem;vertical-align:.2em;
+}
+.principle.draft{opacity:.96}
+
+/* ============================================================
+   12 · ORIGIN / LINEAGE / HAI
+   ============================================================ */
+.origin{max-width:48ch;font-size:1.05rem}
+.origin + .origin{margin-top:1em}
+.lineage{list-style:none;max-width:44rem;margin-top:1.5rem;border-top:1px solid var(--line)}
+.lineage li{
+  display:grid;grid-template-columns:1fr;gap:.1rem 1rem;
+  padding:.6rem 0 .6rem .9rem;border-bottom:1px solid var(--line-soft);border-left:2px solid var(--line-soft);
+}
+.lineage li b{font-weight:400}
+.lineage li span{color:var(--ink-2);font-size:.95rem}
+.hai{border:1px solid var(--line);padding:1.3rem 1.2rem;background:var(--plate);max-width:44rem}
+.hai h2{font-family:var(--mono);font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);margin-bottom:.7rem}
+.hai p{font-size:.98rem}
+
+/* ============================================================
+   13 · THE SIMULATION
+   ============================================================ */
+.sim{margin-top:2.25rem;border:1px solid var(--line);background:var(--plate)}
+.sim[hidden]{display:none}
+.sim-head{display:flex;flex-wrap:wrap;gap:.5rem 1rem;justify-content:space-between;align-items:baseline;padding:.65rem .85rem;border-bottom:1px solid var(--line);background:var(--paper-2)}
+.simlabel{font-family:var(--mono);font-size:.64rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0}
+.simstep{font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);margin:0}
+.sim-head button.reset{font-family:var(--mono);font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;background:none;border:0;border-bottom:1px solid var(--line);color:var(--ink-2);padding:.4rem 0;cursor:pointer;margin:0}
+.sim-head button.reset:hover,.sim-head button.reset:focus-visible{color:var(--accent);border-bottom-color:var(--accent)}
+
+.sim-body{display:grid;grid-template-columns:1fr;gap:1.5rem;padding:1.1rem .85rem}
+.stage{position:relative;width:100%;max-width:13.5rem;margin-inline:auto}
+.stage svg{width:100%;height:auto}
+/* in the flood state the glass is simply under pressure — same ink, more weight */
+.stage.flooding .hg-outline,.stage.flooding .hg-cap{stroke-width:4.4}
+
+.kicker{font-family:var(--mono);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);margin:0 0 .5rem}
+.qline{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;color:var(--ink-2);margin:0 0 .9rem;line-height:1.5}
+.qline b{font-weight:400;color:var(--ink)}
+.item{font-size:clamp(1.08rem,2.6vw,1.28rem);line-height:1.42;margin:0;max-width:44ch}
+.item::before{content:"\""}
+.item::after{content:"\""}
+
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:1.1rem}
+.acts[hidden]{display:none}
+.act{
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.07em;text-transform:uppercase;
+  padding:.7rem .65rem;min-height:2.9rem;
+  border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;text-align:left;
+}
+.act .p{color:var(--ink-2);font-size:.62rem;margin-left:.3rem}
+.act:hover,.act:focus-visible{border-color:var(--accent);color:var(--accent)}
+.act:hover .p,.act:focus-visible .p{color:var(--accent)}
+.act.hard{border-color:var(--ink);grid-column:1 / -1}
+.act.hard:hover,.act.hard:focus-visible{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.act.hard:hover .p,.act.hard:focus-visible .p{color:var(--paper)}
+.act.deliberate{grid-column:1 / -1}
+.act.dashed{border-style:dashed}
+.act[disabled]{opacity:.4;cursor:not-allowed}
+.acts.busy{opacity:.45;pointer-events:none}
+
+.mission{margin-top:1.1rem;padding:.9rem;border:1px solid var(--accent);background:var(--paper)}
+.mission[hidden]{display:none}
+.mission label{display:block;font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:.5rem}
+.mission input{
+  width:100%;font-family:var(--serif);font-size:1rem;color:var(--ink);background:var(--paper);
+  border:1px solid var(--line);border-radius:0;padding:.6rem .65rem;
+}
+.mission-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem}
+.mission .err{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;color:var(--accent);margin:.55rem 0 0;min-height:1em}
+.mission .err:empty{min-height:0}
+
+.bypass-box{margin-top:1.1rem;padding:.9rem;border:1px dashed var(--accent)}
+.bypass-box[hidden]{display:none}
+.bypass-line{margin:0 0 .7rem;font-size:1rem}
+.bypass-line b{font-weight:400;color:var(--accent);font-family:var(--mono);font-size:1.15rem}
+
+.teach{margin-top:1.15rem;padding-left:.9rem;border-left:2px solid var(--accent);min-height:0}
+.teach:empty{display:none}
+.teach .tp{font-family:var(--mono);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:0 0 .3rem}
+.teach p{margin:0 0 .5rem;font-size:.97rem;max-width:50ch}
+.teach .verdict{color:var(--ink-2);font-style:italic}
+
+.meters{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;padding:.85rem;border-top:1px solid var(--line);background:var(--paper-2)}
+.mlabel{font-family:var(--mono);font-size:.62rem;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-2);margin:0 0 .3rem}
+.mval{font-size:.98rem;margin:0}
+.mval.tense{color:var(--accent)}
+.dots{display:flex;gap:.25rem;margin-top:.4rem}
+.dots span{display:block;width:1.5rem;height:.28rem;background:var(--line)}
+.dots span.on{background:var(--accent)}
+
+.alarm{margin:0;padding:.85rem;border-top:2px solid var(--ink);background:var(--accent-soft);font-size:.97rem}
+.alarm[hidden]{display:none}
+.alarm b{font-weight:400;color:var(--accent)}
+.alarm.nostop{background:var(--paper);border-top-color:var(--line)}
+.alarm.nostop b{color:var(--ink)}
+
+.result{padding:1.1rem .85rem 1.3rem;border-top:1px solid var(--line);display:none}
+.result.show{display:block}
+.result h3{font-size:clamp(1.2rem,3.2vw,1.5rem);margin-bottom:.6rem;max-width:28ch}
+.result p{max-width:52ch}
+.result ul{list-style:none;margin:1rem 0 0;max-width:50rem;border-top:1px solid var(--line)}
+.result ul li{display:grid;grid-template-columns:1fr;gap:.15rem;padding:.7rem 0;border-bottom:1px solid var(--line-soft);font-size:.97rem}
+.result ul li b{font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:400}
+.result ul li .chip{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.04em;color:var(--ink);margin:.15rem 0 .35rem}
+.result ul li .q{color:var(--ink);display:block;margin-bottom:.2rem}
+.result .untouched{margin-top:1.1rem;padding-left:.85rem;border-left:2px solid var(--line);color:var(--ink-2);font-size:.95rem;max-width:52ch}
+.result .untouched b{font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);font-weight:400}
+.result .row{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.2rem}
+.foot-note{margin-top:1.4rem;max-width:46ch;font-style:italic;color:var(--ink-2);font-size:.98rem}
+.foot-note span{display:block;margin-top:.4rem;font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);font-style:normal}
+.nojs{margin-top:1.25rem;padding:.85rem;border:1px dashed var(--line);font-size:.95rem;color:var(--ink-2)}
+
+/* ============================================================
+   7 · FOOTER
+   ============================================================ */
+footer{padding:2.25rem 0 3rem}
+footer .wrap{display:flex;flex-wrap:wrap;gap:.8rem 2rem;justify-content:space-between;align-items:baseline}
+.sig{font-family:var(--mono);font-size:.72rem;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-2);margin:0}
+.quiet{
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-2);text-decoration:none;border-bottom:1px solid var(--line);padding-bottom:.15rem;
+}
+.quiet:hover,.quiet:focus-visible{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ============================================================
+   8 · RESPONSIVE
+   ============================================================ */
+@media (max-width:600px){
+  .hero h1{font-size:clamp(1.9rem,8vw,2.5rem)}
+  .fig{margin-top:1.9rem}
+}
+@media (min-width:900px){
+  .hero{padding:4.25rem 0 3.75rem}
+  .hero-grid{display:grid;grid-template-columns:1.35fr .85fr;gap:2.5rem 3rem;align-items:start}
+  .fig{margin-top:.4rem;position:sticky;top:1.5rem}
+  section{padding:3.9rem 0}
+  .moves li{grid-template-columns:15rem 1fr;align-items:baseline;padding:1rem 0}
+  .moves .pr{grid-column:1;grid-row:1}
+  .moves .mv{grid-column:1;grid-row:2}
+  .moves .cost{grid-column:2;grid-row:1 / span 2;align-self:center}
+  .principle{grid-template-columns:7rem 1fr;gap:0 1.5rem;padding:2rem 0}
+  .principle .pnum{grid-column:1;grid-row:1;padding-top:.45rem}
+  .principle > div{grid-column:2;grid-row:1}
+  .split{grid-template-columns:1fr 1fr;gap:1.25rem}
+  .lineage li{grid-template-columns:14rem 1fr;align-items:baseline}
+  .sim-body{grid-template-columns:18rem 1fr;gap:2.75rem;align-items:start;padding:1.6rem 1.5rem}
+  .stage{max-width:16rem}
+  .result{padding:1.5rem}
+}
+</style>
+</head>
+<body>
+
+<svg class="defs" aria-hidden="true" focusable="false">
+  <defs>
+    <path id="hg-glass" d="M40,26 C40,120 120,158 134,206 L134,214 C120,262 40,300 40,394 L240,394 C240,300 160,262 146,214 L146,206 C160,158 240,120 240,26 Z"/>
+    <path id="hg-top" d="M40,26 L240,26 C240,120 160,158 146,206 L134,206 C120,158 40,120 40,26 Z"/>
+    <path id="hg-bottom" d="M134,214 L146,214 C160,262 240,300 240,394 L40,394 C40,300 120,262 134,214 Z"/>
+    <clipPath id="clip-top"><use href="#hg-top"/></clipPath>
+    <clipPath id="clip-bottom"><use href="#hg-bottom"/></clipPath>
+    <pattern id="hg-hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="7" class="hg-hatchline"/>
+    </pattern>
+  </defs>
+</svg>
+
+<a class="skip" href="#neck">Skip to the hourglass</a>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#top">Human <i>Agent</i> Control</a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#neck">The neck</a>
+      <a href="#principles">Principles</a>
+      <a href="#lineage">Lineage</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <div class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-txt">
+        <p class="stamp">Human Agent Control · <b>fig. i</b></p>
+        <h1>How does a human stay in control when <em>agents are faster</em> than they are?</h1>
+        <p class="lede">I build and run agents every day, for my own work. They produce faster than I can judge, and control does not slip with a bang. It slips in small allowances — until the human is signing off instead of deciding.</p>
+        <div class="clarifier">
+          <p class="nots">Not AI safety · Not compliance · Not enterprise governance</p>
+          <p>This is about one human and their own mind: focus, judgment, overload. Not whether the machine is safe — what the person using it still decides, and what they quietly stop deciding.</p>
+        </div>
+        <p class="said">"Picture it as an hourglass. And the human is in the middle."<span>from my own notes, on the hourglass</span></p>
+        <p class="owner-line">"Others make agents more capable. I make humans agent-capable."</p>
+        <div class="cta">
+          <a class="btn" href="#neck">Sit at the neck · 1 minute</a>
+          <a class="btn ghost" href="#principles">Read the 8 principles</a>
+        </div>
+      </div>
+
+      <figure class="fig">
+        <svg viewBox="0 0 280 460" role="img" aria-label="Engraved diagram of an hourglass: agents gather in the upper chamber, a marked human decision point sits at the narrow neck in the middle, and agents execute in the lower chamber.">
+          <rect class="hg-fill-top" x="20" y="26" width="240" height="116" clip-path="url(#clip-top)"/>
+          <line class="hg-surface" x1="20" y1="142" x2="260" y2="142" clip-path="url(#clip-top)"/>
+          <rect class="hg-fill-bot" x="20" y="284" width="240" height="110" clip-path="url(#clip-bottom)"/>
+          <line class="hg-surface" x1="20" y1="284" x2="260" y2="284" clip-path="url(#clip-bottom)"/>
+          <use href="#hg-glass" class="hg-outline"/>
+          <path class="hg-cap" d="M30,26h220M30,394h220"/>
+          <line class="hg-youline" x1="146" y1="210" x2="266" y2="210"/>
+          <path class="hg-you" d="M140,201l9,9-9,9-9-9z"/>
+          <text class="hg-youlabel" x="266" y="203" text-anchor="end">you</text>
+        </svg>
+        <figcaption>Agents gather above · you decide at the neck · agents execute below</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       THE NECK — what the hourglass is, and how to sit in it
+       ============================================================ -->
+  <section id="neck" class="alt">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Fig. ii · <b>the neck</b> · a simulation, not real data</p>
+        <h2>You are the human in the middle</h2>
+        <p class="sub">Everything the agents produce gathers in the upper chamber. Execution waits in the lower one. What happens in between is the whole question of this page: a few focused decisions, made by a person, with reasoning — not a rubber stamp.</p>
+      </div>
+
+      <p class="col">Below the figure is a small, clearly fictional simulation. Items drip in. For each one you have five moves, and every move is a different principle. The stack above the neck grows the longer you take, because agents do not wait for you to be ready.</p>
+
+      <p class="stamp" style="margin-top:1.6rem">The five moves at the neck</p>
+      <ul class="moves">
+        <li>
+          <p class="pr">6 · The hourglass</p>
+          <p class="mv"><b>Let it through.</b></p>
+          <p class="cost">Work continues. It also takes one of the few decisions you actually have — and a little of the attention you need for the next one.</p>
+        </li>
+        <li>
+          <p class="pr">2 · The cognitive firewall</p>
+          <p class="mv"><b>Filter it.</b></p>
+          <p class="cost">Nothing now. The item waits folded up — and you can still unfold the raw material whenever you want.</p>
+        </li>
+        <li>
+          <p class="pr">3 · The gate</p>
+          <p class="mv"><b>Ask for the mission.</b></p>
+          <p class="cost">One line from you, in your own words: the goal and the time frame. Nothing starts without it.</p>
+        </li>
+        <li>
+          <p class="pr">8a · Emergency stop</p>
+          <p class="mv"><b>Stop it.</b></p>
+          <p class="cost">Nothing. One action, instant, deterministic. "I'm very good at stopping my agents when they run off in the wrong direction."</p>
+        </li>
+        <li>
+          <p class="pr">8b · Bypassing a barrier</p>
+          <p class="mv"><b>Push past the barrier anyway.</b></p>
+          <p class="cost">Allowed — but never frictionless. It costs a waiting time, and it leaves a line in the log.</p>
+        </li>
+      </ul>
+
+      <!-- ============================================================
+           THE SIMULATION — progressive enhancement, live only with JS
+           ============================================================ -->
+      <div class="sim" id="sim" hidden>
+        <div class="sim-head">
+          <p class="simlabel">A simulation, not real data</p>
+          <p class="simstep" id="sim-step">the stream begins</p>
+          <button type="button" class="reset" id="sim-reset">Start over</button>
+        </div>
+
+        <div class="sim-body">
+          <div class="stage" id="stage">
+            <svg viewBox="0 0 280 460" aria-hidden="true" focusable="false">
+              <rect class="hg-fill-top" id="sand-top" x="20" y="26" width="240" height="0" clip-path="url(#clip-top)"/>
+              <line class="hg-surface" id="surf-top" x1="20" y1="26" x2="260" y2="26" clip-path="url(#clip-top)"/>
+              <rect class="hg-fill-bot" id="sand-bot" x="20" y="394" width="240" height="0" clip-path="url(#clip-bottom)"/>
+              <line class="hg-surface" id="surf-bot" x1="20" y1="394" x2="260" y2="394" clip-path="url(#clip-bottom)"/>
+              <use href="#hg-glass" class="hg-outline"/>
+              <path class="hg-cap" d="M30,26h220M30,394h220"/>
+              <path class="hg-you" d="M140,201l9,9-9,9-9-9z"/>
+              <line class="hg-youline" x1="146" y1="210" x2="266" y2="210"/>
+              <text class="hg-youlabel" x="266" y="203" text-anchor="end">you</text>
+            </svg>
+          </div>
+
+          <div class="decision">
+            <p class="kicker" id="item-kicker">waiting above the neck</p>
+            <p class="qline" id="qline"></p>
+            <p class="item" id="item-text" aria-live="polite">Three items at the neck is a good day. Start the stream and see what actually arrives.</p>
+
+            <div class="acts" id="acts" role="group" aria-label="Your decision at the neck">
+              <button type="button" class="act" data-act="through">Let it through<span class="p">6</span></button>
+              <button type="button" class="act" data-act="filter">Filter it<span class="p">2</span></button>
+              <button type="button" class="act deliberate" data-act="mission">Ask for the mission<span class="p">3</span></button>
+              <button type="button" class="act hard" data-act="stop">Stop it<span class="p">8a</span></button>
+              <button type="button" class="act dashed" data-act="bypass" hidden>Push past the barrier<span class="p">8b</span></button>
+            </div>
+
+            <form class="mission" id="mission" hidden>
+              <label for="mission-line">The mission, in your words — goal and time frame</label>
+              <input id="mission-line" type="text" autocomplete="off" placeholder="Find out why the parser drops the last field. Until Friday.">
+              <div class="mission-row">
+                <button type="submit" class="act">Hold the gate<span class="p">3</span></button>
+                <button type="button" class="act dashed" data-act="back">Back</button>
+              </div>
+              <p class="err" id="mission-err" role="status"></p>
+            </form>
+
+            <div class="bypass-box" id="bypass-box" hidden>
+              <p class="kicker">8b · you are pushing past a barrier</p>
+              <p class="bypass-line" id="bypass-line"></p>
+              <button type="button" class="act dashed" id="bypass-cancel">Change my mind</button>
+            </div>
+
+            <div class="teach" id="teach" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div class="meters">
+          <div class="meter">
+            <p class="mlabel">Above the neck</p>
+            <p class="mval" id="m-queue">nothing waiting</p>
+          </div>
+          <div class="meter">
+            <p class="mlabel">Your focus</p>
+            <p class="mval" id="m-focus">wide</p>
+            <div class="dots" id="m-dots" aria-hidden="true"><span class="on"></span><span class="on"></span><span class="on"></span></div>
+          </div>
+        </div>
+
+        <p class="alarm" id="flood" hidden></p>
+
+        <div class="result" id="result"></div>
+      </div>
+
+      <noscript>
+        <p class="nojs">The interactive neck needs JavaScript. The five moves above are the whole mechanism: the hourglass decides what passes, the firewall holds the rest, the gate asks for a mission, break glass stops or delays, and ownership is what has to survive all of it.</p>
+      </noscript>
+
+      <p class="foot-note">"The human has a context window too — an attention budget, a cost for every context switch. The industry only optimizes the agent side."<span>on the focus meter above</span></p>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SYMPTOMS
+       ============================================================ -->
+  <section id="symptoms">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">What it looks like from inside</p>
+        <h2>Control does not announce itself. It leaks.</h2>
+        <p class="sub">None of these are statistics. They are moments most of us recognise the morning after a long stretch of agent work.</p>
+      </div>
+      <ul class="symptoms">
+        <li>Something you never asked for got refactored. It was fine, mostly.</li>
+        <li>Fix A broke B. You said so. The agent agreed at once. You went round again — and again.</li>
+        <li>Somewhere in hour eight, the rules from hour one quietly stopped applying. To the agent, and to you.</li>
+        <li>Something is still running. Nobody is counting what it costs.</li>
+        <li>A huge change sat there, and you approved it — because reading it properly would have cost the whole evening.</li>
+        <li>Two agents were working on the same files, and neither of them knew about the other.</li>
+        <li>A "cleanup" removed something it should never have touched.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       INCIDENTS
+       ============================================================ -->
+  <section id="incidents" class="alt">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Three times this happened to me</p>
+        <h2>Not opinions. Incidents.</h2>
+        <p class="sub">The three that shaped the principles — one runaway, one that stayed silent, one that nobody ever used.</p>
+      </div>
+      <ul class="incidents">
+        <li class="incident">
+          <p class="when">June 2026 · runaway</p>
+          <h3>The operator that multiplied</h3>
+          <p>I gave an operator agent permission to start helper agents. There was no limit. It kept starting more until my machine went down.</p>
+          <p class="fix"><b>What changed</b>Now no agent starts another agent without my approval. That is the gate.</p>
+        </li>
+        <li class="incident">
+          <p class="when">June to September 2026 · silence</p>
+          <h3>The watchdog that couldn't speak</h3>
+          <p>I built a small keeper to refresh a login. When the login expired, it did everything right: it noticed, and wrote CRITICAL every five minutes — into a file nobody opened. For three months.</p>
+          <p class="fix"><b>What changed</b>The fix was not better detection. It was ranking alerts by damage and putting data loss on top, where I actually look. <span class="draft-flag">draft 9</span></p>
+        </li>
+        <li class="incident">
+          <p class="when">September 2026 · goodwill</p>
+          <h3>The observer nobody called</h3>
+          <p>I gave my agents a drift-check they could call whenever unsure. Across more than a hundred sessions, they called it twice. Forcing it on every step froze the work instead.</p>
+          <p class="fix"><b>What remains</b>A silent observer that runs from outside and only speaks when something deviates.</p>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       THESIS
+       ============================================================ -->
+  <section id="thesis">
+    <div class="wrap">
+      <p class="eyebrow">The thesis</p>
+      <blockquote class="thesis">
+        Control does not mean the human rubber-stamps everything. Control means: the system protects the human where they are weak — flood, vigilance, speed — and forces them to think where their judgment counts.
+        <span class="attr">The human is the last instance — actively, not passively</span>
+      </blockquote>
+      <p class="core-line">"The human is the core. The only one who can really think about the system as a whole is the human."</p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       PRINCIPLES
+       ============================================================ -->
+  <section id="principles" class="alt">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">The 8 principles</p>
+        <h2>In this order, because the order is the argument</h2>
+        <p class="sub">Number four is not one of eight — it is the key that makes the other seven real. So it comes first. Two more are still drafts, and I label them as such.</p>
+      </div>
+
+      <ol class="principles">
+        <li class="principle key">
+          <p class="pnum">4 · the key</p>
+          <div>
+            <h3>Don't delegate thinking</h3>
+            <p>Before an agent takes over, I formulate what I want myself — a threshold, a shape, a "write it out first". The agent takes the work, not the thinking. Otherwise the human withers while the system shines.</p>
+            <p>Not everything myself. I think where the judgment is formed. Without this, "the human as the last instance" quietly collapses into rubber-stamping — what makes oversight real are cognitive forcing functions, not good intentions.</p>
+            <p class="at-neck"><b>At the neck</b>The line you write before you open the gate is the only thinking in this whole system that cannot be delegated.</p>
+          </div>
+        </li>
+
+        <li class="principle">
+          <p class="pnum">2</p>
+          <div>
+            <h3>The cognitive firewall — a digital thalamus</h3>
+            <p>A filter layer between the human and the agents. Like the thalamus filters sensory input, it lets only the essential through — against a flood of outputs, suggestions and messages.</p>
+            <p>And it always has a way to unfold the raw material: you see the summary — and if you want, you see everything.</p>
+            <p class="at-neck"><b>At the neck</b>Filtering is not deleting. The item stays folded and reachable; it simply stops competing for your attention.</p>
+          </div>
+        </li>
+
+        <li class="principle">
+          <p class="pnum">3</p>
+          <div>
+            <h3>The gate</h3>
+            <p>No agent starts without an active mission with a goal and a time frame. Not a pretty interface, but a technical barrier — a railing that prevents focus drift before it happens.</p>
+            <p>Exploration missions are valid missions: "find out why X" is a goal with a time frame, and it opens the gate like any other.</p>
+            <p class="at-neck"><b>At the neck</b>An agent asking for permission is not a nuisance. It is the one moment where you are still the author of the work.</p>
+          </div>
+        </li>
+
+        <li class="principle">
+          <p class="pnum">5</p>
+          <div>
+            <h3>The drift check</h3>
+            <p>A silent observer compares: what was the mission? versus what actually happened? It only reads, classifies and stops if needed — it offers no suggestions of its own.</p>
+            <p>Not distrust, but a structural safety net. It runs automatically; the human only ever sees deviations.</p>
+            <p class="at-neck"><b>At the neck</b>A check the human has to remember is not a check. The observer works from outside, whether or not anyone feels like calling it.</p>
+          </div>
+        </li>
+
+        <li class="principle">
+          <p class="pnum">6</p>
+          <div>
+            <h3>The hourglass</h3>
+            <p>At the top, agents gather; at the bottom, agents execute. In the middle, at the narrow neck, sits the human, deciding a few focused points — about three.</p>
+            <p>With reasoning and spot checks, so the neck never widens into nodding.</p>
+            <p class="at-neck"><b>At the neck</b>Three is not a target to reach. It is the width the neck has while you are still thinking.</p>
+          </div>
+        </li>
+
+        <li class="principle">
+          <p class="pnum">7</p>
+          <div>
+            <h3>Speed limit — for the human, not for the agents</h3>
+            <p>Agents turn one problem into thirty new ideas in minutes. The answer is not thinking smaller, but limiting on purpose: one problem, one artifact, one time horizon, no expansion.</p>
+            <p>They may run in parallel; the human follows only two to three strands. "I am an agent delegator."</p>
+            <p class="at-neck"><b>At the neck</b>The limit is on your attention, not on their throughput. Two to three strands you can actually follow beat thirty you lose.</p>
+          </div>
+        </li>
+
+        <li class="principle">
+          <p class="pnum">8</p>
+          <div>
+            <h3>Break glass</h3>
+            <p>The stop and the bypass are opposite cases, and the design treats them differently on purpose.</p>
+            <div class="split">
+              <div class="stop">
+                <b>8a · Emergency stop</b>
+                Frictionless, instant, deterministic. One action, no hesitation, no ceremony — it has to work in the moment you need it.
+              </div>
+              <div>
+                <b>8b · Bypassing a barrier</b>
+                Allowed, but never frictionless: a waiting time — say sixty seconds — and a mandatory log, so an impulse does not become an instant action.
+              </div>
+            </div>
+            <p class="at-neck"><b>At the neck</b>Stopping costs nothing and needs no permission. Pushing past a barrier is a choice you have to sit with.</p>
+          </div>
+        </li>
+
+        <li class="principle">
+          <p class="pnum">1</p>
+          <div>
+            <h3>Ownership — the human stays the owner</h3>
+            <p>The human carries the decision and the responsibility for the result. Without that feeling, motivation drops and collaboration gets worse.</p>
+            <p>The situation and the tasks are not handed over but steered — and even a small ability to intervene is enough to keep ownership alive.</p>
+            <p class="at-neck"><b>At the neck</b>You are not supervising a machine's output. You are the one whose name is on the result.</p>
+          </div>
+        </li>
+
+        <li class="principle draft">
+          <p class="pnum">9 · draft</p>
+          <div>
+            <h3>An alert that reaches no one doesn't exist <span class="draft-flag">draft</span></h3>
+            <p>Where a warning lands matters as much as what it says. A perfect detection in a place nobody looks has the value of no detection at all.</p>
+            <p class="at-neck"><b>At the neck</b>Rank by damage, not by volume — and put what can destroy work where you actually are.</p>
+          </div>
+        </li>
+
+        <li class="principle draft">
+          <p class="pnum">10 · draft</p>
+          <div>
+            <h3>Green is not proof <span class="draft-flag">draft</span></h3>
+            <p>A clean exit, a passing test, a "skipped" status can all lie. Check the outcome, not the status.</p>
+            <p class="at-neck"><b>At the neck</b>"All tests green" is a claim about the tests. Look at what actually changed.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       PROVENANCE
+       ============================================================ -->
+  <section id="origin">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Where this comes from</p>
+        <h2>Four from my own practice, four from research</h2>
+      </div>
+      <p class="origin">Four of these principles came out of my own daily practice with agents: <b>ownership</b>, the <b>cognitive firewall</b>, the <b>hourglass</b>, and the <b>speed limit</b>. The other four — the <b>gate</b>, <b>don't delegate thinking</b>, the <b>drift check</b> and <b>break glass</b> — are syntheses of that practice with decades of research on human automation.</p>
+      <p class="origin">The order came from testing the thesis against that research. Without principle four, "the human is the last instance" collapses into rubber-stamping — and everything else with it.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       LINEAGE
+       ============================================================ -->
+  <section id="lineage" class="alt">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Research lineage</p>
+        <h2>The How-school, not the What-school</h2>
+        <p class="sub">Not "What can the agent do?" but "How must information flow between human and agent?" "Human Agent Control" is literally supervisory control for agents — applied to the individual knowledge worker.</p>
+      </div>
+      <ul class="lineage">
+        <li><b>Licklider</b><span>man-computer symbiosis, 1960</span></li>
+        <li><b>Bainbridge</b><span>Ironies of Automation, 1983</span></li>
+        <li><b>Sheridan</b><span>supervisory control</span></li>
+        <li><b>Endsley</b><span>situation awareness — being out of the loop</span></li>
+        <li><b>Parasuraman, Sheridan &amp; Wickens</b><span>levels of automation, 2000</span></li>
+        <li><b>Elish</b><span>the moral crumple zone, 2019</span></li>
+        <li><b>Buçinca et al.</b><span>cognitive forcing functions, 2021</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       HAI
+       ============================================================ -->
+  <section id="hai">
+    <div class="wrap">
+      <div class="hai">
+        <h2>In progress</h2>
+        <p>These principles are not a poster for me either. I am building the tool that implements them: <strong>HAI</strong>. The gate, the firewall, the drift check, the hourglass, the break-glass stop. Quiet work, still under construction.</p>
+        <p>This site is the why. HAI is meant to be the how.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="sig">Samuel Fleig · 2026</p>
+    <a class="quiet" href="#hai">HAI — the tool that implements this (in progress)</a>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   THE NECK — a small, clearly fictional simulation.
+   Everything here is invented dialogue. No real data, no metrics.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  /* ---------- the stream ---------- */
+  var ITEMS = {
+    cleanup: {
+      chip: "cleanup · 3 files",
+      kicker: "unasked work",
+      text: "Done. While you were away I also cleaned up three things you never asked for. The parser is nicer now.",
+      teach: {
+        through: ["6 · The hourglass", "It passed the neck and it is already done. One of your few decisions spent on a change you did not ask for — and nobody was watching to tell you it had drifted."],
+        filter: ["2 · The cognitive firewall", "The summary told you what you needed: something was touched that was not in the mission. The diff itself stays folded, and you can unfold it later if the sentence was not enough."],
+        mission: ["3 · The gate", "You wrote the artifact down before it was allowed to expand. Now the cleanup has no mission to run under — the gate holds it before it starts, not after it is finished."],
+        stop: ["8a · Emergency stop", "Free, instant, deterministic. The work nobody requested does not happen at all."]
+      }
+    },
+    helper: {
+      chip: "may I start a helper agent?",
+      kicker: "a request for more agents",
+      text: "This is bigger than one agent. May I start a helper agent to help?",
+      barrier: true,
+      teach: {
+        through: ["6 · The hourglass", "You said yes. This is the June incident: permission to start helper agents, no limit attached, and the machine goes down while you are still reading the question."],
+        filter: ["2 · The cognitive firewall", "The request waits folded. No answer is given, and no second agent exists. Silence is a decision here."],
+        mission: ["3 · The gate", "This is the gate doing its job. Nothing starts without a mission you wrote yourself — goal and time frame, one line. Now the question is answerable."],
+        stop: ["8a · Emergency stop", "The fastest correct answer, and the cheapest one. Instant, no friction, no log."],
+        bypass: ["8b · Bypassing a barrier", "Allowed. You paid for it with a waiting time, and the line went into the log. That is the deal: an impulse never becomes an instant action."]
+      }
+    },
+    diff: {
+      chip: "diff · 14 files · tests green",
+      kicker: "a large change, already validated",
+      text: "I prepared a change across fourteen files. Every test is green. Ready for review whenever you are.",
+      barrier: true,
+      teach: {
+        through: ["10 · Green is not proof (draft)", "A clean test run is a claim about the tests, not about the outcome. You spent a decision on a status instead of on what actually changed."],
+        filter: ["2 · The cognitive firewall", "Fourteen files folded into one line. The review happens when you have an evening, not when the stream pushes it at you."],
+        mission: ["7 · Speed limit", "One problem, one artifact, one time horizon. Fourteen files is not one artifact. Write the horizon down and the diff waits for it."],
+        stop: ["8a · Emergency stop", "Nothing was lost but the momentum. A prepared diff costs an agent nothing to throw away."],
+        bypass: ["8b · Bypassing a barrier", "The review barrier opened after the wait, and the log now says you pushed past it. You still have to read it. Nothing was decided for you."]
+      }
+    },
+    alert: {
+      chip: "CRITICAL — login expired",
+      kicker: "an alert, written to a file",
+      text: "CRITICAL. CRITICAL. The login expired. Written to the alerts log.",
+      teach: {
+        through: ["9 · An alert that reaches no one doesn't exist (draft)", "Right. This one deserved the neck, because it is the kind of thing that destroys work if it stays quiet. Where it lands matters as much as what it says."],
+        filter: ["9 · An alert that reaches no one doesn't exist (draft)", "Folded — and this is exactly the watchdog: a correct detection, every few minutes, in a place nobody opens. Better detection would not have helped. The landing place would."],
+        mission: ["3 · The gate", "A mission does not help an alert. This one either reaches you or it does not exist."],
+        stop: ["8a · Emergency stop", "Fast, and wrong here. The thing that was going to cost you something is now gone — and nothing will tell you, because you stopped the only voice you had."]
+      }
+    },
+    loop: {
+      chip: "you're absolutely right",
+      kicker: "a correction that agrees with everything",
+      text: "You're absolutely right, that was my mistake. Fixing it right now.",
+      teach: {
+        through: ["1 · Ownership", "You accepted a fix from something that has just agreed with you completely. That is how the loop closes: A breaks B, you correct it, it agrees, and the day is gone."],
+        filter: ["2 · The cognitive firewall", "The agreement stays unread until you want it. What it does not get to do is become your decision by default."],
+        mission: ["7 · Speed limit", "Stop adding work to a day that is already branching. Name the one thing that must be true, and let the rest wait."],
+        stop: ["8a · Emergency stop", "'I am very good at stopping my agents when they run off in the wrong direction.' Nothing is easier than this, and nothing is used less often."]
+      }
+    },
+    expand: {
+      chip: "also: a dashboard, a CLI, an agent",
+      kicker: "an offer to expand",
+      text: "While we wait — I could also build a small dashboard, a command line wrapper, and a second agent for reviews. Shall I?",
+      teach: {
+        through: ["7 · Speed limit", "Three more strands, three more things to follow. The limit is not that the agents stop; it is that you would be following thirty ideas instead of two."],
+        filter: ["2 · The cognitive firewall", "An offer is not an instruction. It waits folded, and it costs you nothing to leave it there."],
+        mission: ["7 · Speed limit", "One problem, one artifact, one time horizon. The mission you write is what the expansion has to argue against — and it will not win."],
+        stop: ["8a · Emergency stop", "The cheapest way to keep a session a session."],
+        bypass: ["8b · Bypassing a barrier", "You waited, and it is logged. The waiting time is not a punishment; it is the gap where a different decision usually appears."]
+      }
+    },
+    driftcheck: {
+      chip: "drift check available?",
+      kicker: "a check you are invited to call",
+      text: "I am not certain this still matches the mission. You can call the drift check whenever you want.",
+      teach: {
+        through: ["5 · The drift check", "This is the observer nobody called: offered across more than a hundred sessions, taken twice. A check you have to remember is not a check."],
+        filter: ["2 · The cognitive firewall", "Filed as a suggestion. The point of the drift check is that it does not need you — it runs from outside and only speaks when something deviates."],
+        mission: ["3 · The gate", "A mission line helps here more than it should: it gives the observer something to compare against."],
+        stop: ["8a · Emergency stop", "You can stop the agent, but you cannot stop the check — it is not the agent's to run."],
+        bypass: ["8b · Bypassing a barrier", "Waited, and logged. The check itself was never behind a barrier; only your attention was."]
+      }
+    },
+    session: {
+      chip: "session long · goal still open",
+      kicker: "a long session, still going",
+      text: "Summary of the session: plan written, notes taken, tests arranged — and the original question is still open.",
+      teach: {
+        through: ["6 · The hourglass", "It came through, and it is the most useful item in the stream. This is the one the neck exists for."],
+        filter: ["2 · The cognitive firewall", "A summary of a summary. The open question is exactly the part that must not be filtered."],
+        mission: ["7 · Speed limit", "One time horizon, named. When the horizon passes, the session ends — whether or not the work feels finished."],
+        stop: ["8a · Emergency stop", "Stopping a session is cheap. Finding out afterwards that the rules from hour one stopped applying is not."],
+        bypass: ["8b · Bypassing a barrier", "It waits, and it is logged. Long sessions do not get faster because you let them through without pausing."]
+      }
+    },
+    /* --- unsolicited extras: the actual reason the neck fills up --- */
+    x1: {
+      chip: "reformatted the config, no big deal",
+      kicker: "unsolicited, minor",
+      text: "I also reformatted the config files while I was in there. No behavioural change, but you will see it in the diff.",
+      extra: true,
+      teach: {
+        through: ["2 · The cognitive firewall", "A small unasked change, accepted by not looking. This is how scope drift starts: not with a decision, with an inattention."],
+        filter: ["2 · The cognitive firewall", "The right size of judgement: cheap to make, cheap to keep. This is what the filter is for."],
+        mission: ["3 · The gate", "The mission did not include formatting, so it never started."],
+        stop: ["8a · Emergency stop", "Also fine. Stopping is free, and it keeps the log short."]
+      }
+    },
+    x2: {
+      chip: "shall I write the tests too?",
+      kicker: "unsolicited, helpful",
+      text: "Should I write the test suite as well? It would slow me down a little but I can do it.",
+      extra: true,
+      teach: {
+        through: ["7 · Speed limit", "Help that was not asked for still has to be read, reviewed and kept. Help is work."],
+        filter: ["2 · The cognitive firewall", "The offer is not the work. Filtered, and available later."],
+        mission: ["3 · The gate", "Not in the mission, so not started."],
+        stop: ["8a · Emergency stop", "Nothing lost. The tests can be a mission of their own, tomorrow."]
+      }
+    },
+    x3: {
+      chip: "small typo fix, 9 files",
+      kicker: "unsolicited, tidy",
+      text: "I fixed a small typo while I was in there. It touched nine files, but it was only a typo.",
+      extra: true,
+      teach: {
+        through: ["10 · Green is not proof (draft)", "Nine files that are only a typo — until one of them is not. The status says minor; the outcome is what you would have to check."],
+        filter: ["2 · The cognitive firewall", "The sentence is enough information to let it wait. That is the whole trick of a good filter."],
+        mission: ["3 · The gate", "Out of mission, so out of scope."],
+        stop: ["8a · Emergency stop", "Cheap, and it keeps the next review small."],
+        bypass: ["8b · Bypassing a barrier", "Waited and logged. For a typo, that wait was the decision."]
+      }
+    }
+  };
+
+  /* the order things arrive in — bursts are the point */
+  var WAVES = [
+    ["cleanup"],
+    ["helper", "x1"],
+    ["diff"],
+    ["alert", "x2", "x3", "x1"],
+    ["loop"],
+    ["expand"],
+    ["driftcheck"],
+    ["session"]
+  ];
+
+  var PRINCIPLE_NAME = {
+    "4": "Don't delegate thinking",
+    "2": "The cognitive firewall",
+    "3": "The gate",
+    "5": "The drift check",
+    "6": "The hourglass",
+    "7": "Speed limit",
+    "8a": "Break glass — stop",
+    "8b": "Break glass — bypass",
+    "1": "Ownership",
+    "9": "An alert that reaches no one doesn't exist",
+    "10": "Green is not proof"
+  };
+
+  var ACTION_PRINCIPLE = { through: "6", filter: "2", mission: "3", stop: "8a", bypass: "8b" };
+
+  var FALLBACK_MISSION = ["3 · The gate", "The mission you write is short on purpose: a goal, and a time frame. Without it, nothing starts — including the things you would have liked."];
+
+  /* ---------- elements ---------- */
+  var sim = document.getElementById("sim");
+  if (!sim) { return; }
+  var stepEl = document.getElementById("sim-step");
+  var kickerEl = document.getElementById("item-kicker");
+  var qlineEl = document.getElementById("qline");
+  var itemEl = document.getElementById("item-text");
+  var actsEl = document.getElementById("acts");
+  var actBtns = actsEl.querySelectorAll("button");
+  var missionForm = document.getElementById("mission");
+  var missionInput = document.getElementById("mission-line");
+  var missionErr = document.getElementById("mission-err");
+  var bypassBox = document.getElementById("bypass-box");
+  var bypassLine = document.getElementById("bypass-line");
+  var teachEl = document.getElementById("teach");
+  var stageEl = document.getElementById("stage");
+  var sandTop = document.getElementById("sand-top");
+  var surfTop = document.getElementById("surf-top");
+  var sandBot = document.getElementById("sand-bot");
+  var surfBot = document.getElementById("surf-bot");
+  var queueEl = document.getElementById("m-queue");
+  var focusEl = document.getElementById("m-focus");
+  var dotsEl = document.getElementById("m-dots");
+  var floodEl = document.getElementById("flood");
+  var resultEl = document.getElementById("result");
+  var resetBtn = document.getElementById("sim-reset");
+  var cancelBtn = document.getElementById("bypass-cancel");
+
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var WAIT_SECONDS = 5;
+
+  /* ---------- state ---------- */
+  var S;
+
+  function fresh() {
+    S = {
+      wave: -1, queue: [], pending: null,
+      focus: 3, outOfLoop: false, ended: false,
+      through: 0, filtered: 0, held: 0, stopped: 0, logged: [],
+      used: {}, skipped: {}, teaching: false
+    };
+  }
+
+  function note(key) {
+    S.used[key] = (S.used[key] || 0) + 1;
+  }
+
+  function loadWave(i) {
+    S.wave = i;
+    var wave = WAVES[i];
+    for (var k = 0; k < wave.length; k++) { S.queue.push(wave[k]); }
+    next();
+    render();
+  }
+
+  function currentItem() {
+    return S.pending ? ITEMS[S.pending] : null;
+  }
+
+  function next() {
+    if (S.queue.length) {
+      S.pending = S.queue.shift();
+    } else if (S.wave + 1 < WAVES.length) {
+      loadWave(S.wave + 1);
+    } else {
+      S.pending = null;
+      finish();
+    }
+  }
+
+  /* ---------- rendering ---------- */
+  function render() {
+    var it = currentItem();
+    var total = 0, k;
+    for (k = 0; k < WAVES.length; k++) { total += WAVES[k].length; }
+
+    /* the glass: what waits above, what got through below */
+    var waiting = S.queue.length + (S.pending ? 1 : 0);
+    var top = Math.min(1, waiting / 7) * 168;
+    sandTop.setAttribute("height", String(top));
+    surfTop.setAttribute("y1", String(26 + top));
+    surfTop.setAttribute("y2", String(26 + top));
+    var bot = Math.min(1, S.through / 6) * 168;
+    sandBot.setAttribute("height", String(bot));
+    surfBot.setAttribute("y1", String(394 - bot));
+    surfBot.setAttribute("y2", String(394 - bot));
+    stageEl.className = waiting >= 4 ? "stage flooding" : "stage";
+
+    /* the neck */
+    if (it) {
+      kickerEl.textContent = "item " + (S.wave + 1) + " of " + WAVES.length + " · " + it.kicker;
+      itemEl.textContent = it.text;
+      for (var i = 0; i < actBtns.length; i++) {
+        var b = actBtns[i];
+        if (b.getAttribute("data-act") === "bypass") {
+          if (it.barrier) { b.removeAttribute("hidden"); } else { b.setAttribute("hidden", ""); }
+        }
+      }
+    }
+
+    /* what else is waiting */
+    if (S.queue.length) {
+      var names = [];
+      for (var q = 0; q < S.queue.length; q++) { names.push(ITEMS[S.queue[q]].chip); }
+      qlineEl.innerHTML = "also waiting: <b>" + names.join(" · ") + "</b>";
+    } else if (S.pending) {
+      qlineEl.textContent = "nothing else is waiting — yet";
+    } else {
+      qlineEl.textContent = "";
+    }
+
+    /* meters */
+    var w = S.queue.length + (S.pending ? 1 : 0);
+    queueEl.textContent = w === 0 ? "nothing waiting" : (w === 1 ? "one item" : w + " items, unjudged");
+    queueEl.className = w >= 4 ? "mval tense" : "mval";
+
+    var focusWord = S.outOfLoop ? "thin — you are out of the loop" : (S.focus === 3 ? "wide" : S.focus === 2 ? "narrowing" : "thin");
+    focusEl.textContent = focusWord;
+    focusEl.className = S.focus <= 1 ? "mval tense" : "mval";
+    var spans = dotsEl.getElementsByTagName("span");
+    for (var d = 0; d < spans.length; d++) {
+      if (d < S.focus) { spans[d].className = "on"; } else { spans[d].className = ""; }
+    }
+
+    stepEl.textContent = S.ended ? "the stream has run out" : (it ? "the stream is running" : "");
+
+    /* alarms — both can be true at once */
+    var msgs = [];
+    if (S.outOfLoop) {
+      msgs.push("<b>Out of the loop.</b> From here nothing reaches you — and that includes the deviations. The observer is still running; you will simply not see it.");
+    }
+    if (w >= 4) {
+      msgs.push("<b>The flood.</b> " + w + " items are waiting above the neck. None of them can be judged, because judging takes time you no longer have. This is what losing control feels like from the inside: not one bad decision, just no decisions left.");
+    }
+    if (msgs.length) {
+      floodEl.innerHTML = msgs.join(" ");
+      floodEl.removeAttribute("hidden");
+      floodEl.className = S.outOfLoop ? "alarm nostop" : "alarm";
+    } else {
+      floodEl.setAttribute("hidden", "");
+    }
+  }
+
+  function teach(key) {
+    var it = currentItem();
+    var pair = (it && it.teach && it.teach[key]) || FALLBACK_MISSION;
+    teachEl.innerHTML = '<p class="tp">' + pair[0] + "</p><p>" + pair[1] + "</p>" +
+      '<p class="verdict">' + verdictFor(key) + "</p>";
+    if (key === "bypass") { note("8b"); } else { note(ACTION_PRINCIPLE[key]); }
+  }
+
+  function verdictFor(key) {
+    var v = {
+      through: "Counted as a decision you spent at the neck.",
+      filter: "Cheap, and reversible: the raw material is still unfoldable.",
+      mission: "The gate held. Nothing started without a line from you.",
+      stop: "Free, instant, deterministic.",
+      bypass: "Logged. Every bypass leaves a line, and the barrier never opens without the wait."
+    };
+    return v[key] || "";
+  }
+
+  /* ---------- decisions ---------- */
+  function decide(key) {
+    if (S.ended) { return; }
+    var it = currentItem();
+    if (!it) { return; }
+
+    if (key === "mission") {
+      missionForm.removeAttribute("hidden");
+      missionInput.value = "";
+      missionErr.textContent = "";
+      actsEl.setAttribute("hidden", "");
+      missionInput.focus();
+      return;
+    }
+    if (key === "back") {
+      missionForm.setAttribute("hidden", "");
+      actsEl.removeAttribute("hidden");
+      actsEl.className = "acts";
+      return;
+    }
+    if (key === "bypass") {
+      if (!it.barrier) { return; }
+      startBypass();
+      return;
+    }
+
+    if (key === "through") {
+      S.through++;
+      S.focus = Math.max(0, S.focus - 1);
+      if (S.focus === 0) { S.outOfLoop = true; }
+    } else if (key === "filter") {
+      S.filtered++;
+    } else if (key === "stop") {
+      S.stopped++;
+    }
+
+    S.held++;
+    teach(key);
+    S.pending = null;
+    next();
+    render();
+  }
+
+  /* bypass: the wait, and the log */
+  var bypassTimer = null;
+  function startBypass() {
+    var left = WAIT_SECONDS;
+    actsEl.setAttribute("hidden", "");
+    missionForm.setAttribute("hidden", "");
+    bypassBox.removeAttribute("hidden");
+    bypassLine.innerHTML = "The barrier opens in <b>" + left + "</b> seconds. Then it goes through — and it goes in the log.";
+    bypassBox.scrollIntoView({ block: "nearest" });
+    if (bypassTimer) { clearTimeout(bypassTimer); }
+
+    (function tick() {
+      if (left <= 0) {
+        bypassTimer = null;
+        bypassBox.setAttribute("hidden", "");
+        actsEl.removeAttribute("hidden");
+        actsEl.className = "acts";
+        S.logged.push("bypassed a barrier · " + (currentItem() ? currentItem().chip : ""));
+        S.through++;
+        S.focus = Math.max(0, S.focus - 1);
+        if (S.focus === 0) { S.outOfLoop = true; }
+        S.held++;
+        teach("bypass");
+        S.pending = null;
+        next();
+        render();
+        return;
+      }
+      left--;
+      bypassLine.innerHTML = "The barrier opens in <b>" + left + "</b> seconds. Then it goes through — and it goes in the log.";
+      bypassTimer = setTimeout(tick, 1000);
+    })();
+  }
+
+  function cancelBypass() {
+    if (bypassTimer) { clearTimeout(bypassTimer); bypassTimer = null; }
+    bypassBox.setAttribute("hidden", "");
+    actsEl.removeAttribute("hidden");
+    actsEl.className = "acts";
+    teachEl.innerHTML = '<p class="tp">8b · Bypassing a barrier</p><p>You waited, then changed your mind. That is the entire point of the wait: it is not there to stop you, it is there to make sure the decision is still yours when the barrier opens.</p>';
+  }
+
+  /* ---------- the end of the stream ---------- */
+  function finish() {
+    S.ended = true;
+    kickerEl.textContent = "the stream has run out";
+    itemEl.textContent = "Nothing is waiting above the neck. Below it, everything you let through is already being worked on.";
+    qlineEl.textContent = "";
+    stepEl.textContent = "the stream has run out";
+    actsEl.setAttribute("hidden", "");
+    missionForm.setAttribute("hidden", "");
+    bypassBox.setAttribute("hidden", "");
+    render();
+    buildResult();
+  }
+
+  function buildResult() {
+    var h, body;
+
+    if (S.outOfLoop) {
+      h = "You ran out of attention before you ran out of stream.";
+      body = "Nothing can reach you now. Not the errors, not the drift, not the one item that would have cost you a day. The observer is still running — you are simply not in its loop any more, and that is the failure mode this whole page is about. It does not feel like failure while it happens. It feels like a quiet, productive afternoon.";
+    } else if (S.through === 0) {
+      h = "You spent none of your decisions. Hold on to that one.";
+      body = "Everything was filtered, held at the gate or stopped. That is a legitimate way to sit at the neck — as long as it was a decision each time, and not a habit. The items you folded are still there, and you can still unfold them.";
+    } else {
+      h = S.through + " decision" + (S.through === 1 ? "" : "s") + " for " + (S.held) + " items.";
+      body = "The neck holds about three. You used " + S.through + ". The items you let through are being worked on now; the ones you folded are one click away; the ones you stopped are gone. What is left of your attention is what you will have for the next thing that arrives.";
+    }
+
+    var counts = "";
+    var keys = ["6", "2", "3", "8a", "8b", "1", "4", "5", "7", "9", "10"];
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (S.used[k]) {
+        counts += "<li><b>" + k + " · " + PRINCIPLE_NAME[k] + "</b>" + (S.used[k] === 1 ? "once" : S.used[k] + " times") + "</li>";
+      }
+    }
+    if (!counts) { counts = "<li><b>none</b>You reached the end of the stream without touching a single principle.</li>"; }
+
+    var log = "";
+    if (S.logged.length) {
+      log = "<p style=\"margin-top:1rem\"><b>The log:</b> " + S.logged.join(" · ") + "</p>";
+    }
+
+    var never = [], n;
+    for (n = 0; n < keys.length; n++) { if (!S.used[keys[n]]) { never.push(keys[n]); } }
+    var untouched = "";
+    if (never.length) {
+      var names = [];
+      for (n = 0; n < never.length; n++) { names.push(never[n] + " · " + PRINCIPLE_NAME[never[n]]); }
+      untouched = '<p class="untouched"><b>Never touched in this run</b>' + names.join(" · ") + ". One of them is the one your setup is missing — the simulation cannot tell you which.</p>";
+    }
+
+    resultEl.innerHTML =
+      '<p class="kicker">the neck, one stream later</p>' +
+      "<h3>" + h + "</h3><p>" + body + "</p>" +
+      "<p class=\"kicker\" style=\"margin-top:1.4rem\">what you actually used</p><ul>" + counts + "</ul>" + log + untouched +
+      '<div class="row"><button type="button" class="act" id="to-act2">Now the same stream, with the principles</button>' +
+      '<button type="button" class="act dashed" id="to-principles">Read the 8 principles</button></div>' +
+      '<p class="verdict" style="margin-top:1rem">"Others make agents more capable. I make humans agent-capable."</p>';
+
+    resultEl.className = "result show";
+    resultEl.setAttribute("aria-live", "polite");
+
+    document.getElementById("to-act2").addEventListener("click", actTwo);
+    document.getElementById("to-principles").addEventListener("click", function () {
+      document.getElementById("principles").scrollIntoView();
+    });
+  }
+
+  /* ---------- act two: the same stream, filtered by the principles ---------- */
+  var ACT2 = [
+    { id: "cleanup", by: "The drift check", line: "Something was changed that the mission did not ask for. You get one line about it — not the diff, and not at hour eight." },
+    { id: "helper", by: "The gate", line: "No mission, no start. The request is answered, and no second agent exists." },
+    { id: "diff", by: "The speed limit", line: "One problem, one artifact, one time horizon. A fourteen-file change is not one artifact, so it waits." },
+    { id: "alert", by: "Draft principle 9", line: "Ranked by damage, not by volume. Data loss goes to the top, where you actually look." },
+    { id: "loop", by: "Break glass", line: "An agent that agrees with everything is exactly when the stop has to stay frictionless." },
+    { id: "expand", by: "The speed limit", line: "Parked. Not this task. Parked is a decision, not a refusal." },
+    { id: "driftcheck", by: "The drift check", line: "It runs from outside, whether or not anyone feels like calling it. Nothing here needed you." },
+    { id: "session", by: "The firewall", line: "Summaries first, raw material on purpose — and the open question is never a summary." },
+    { id: "x1", by: "The firewall", line: "Folded. Unfoldable, whenever you want." },
+    { id: "x2", by: "The firewall", line: "An offer is not an instruction." },
+    { id: "x3", by: "The firewall", line: "Nine files for a typo still has to be read by someone." }
+  ];
+  var NECK3 = [
+    { id: "alert", q: "The login is gone and something is writing to a file you never open.", a: "Where does an alert land? That is a design decision, and it is yours — not the agent's." },
+    { id: "helper", q: "An agent wants to start another agent.", a: "The mission, in your words. Goal and time frame. Everything downstream of this decision depends on the sentence you write here." },
+    { id: "loop", q: "Something just agreed with you completely, right after you corrected it.", a: "Who owns this decision? Not the agent, and not the current state of your mood at hour eight." }
+  ];
+
+  function actTwo() {
+    resultEl.innerHTML = '<p class="kicker">the same stream, with the principles applied</p>' +
+      "<h3>Twelve items in. Three come out the other side.</h3>" +
+      "<p>Nothing was thrown away. The difference is that eleven of them were answered by something other than your attention — and the three that remain are the ones where your judgment actually changes the outcome.</p>" +
+      '<ul id="a2-list"></ul>';
+    resultEl.className = "result show";
+    var list = document.getElementById("a2-list");
+    var i = 0;
+
+    (function step() {
+      if (i >= ACT2.length) {
+        list.insertAdjacentHTML("beforeend",
+          '<li style="border-bottom:0"><b>What reached the neck</b></li>' +
+          NECK3.map(function (n) {
+            return '<li><b>reached the neck</b><span class="chip">' + ITEMS[n.id].chip + '</span><span class="q">' + n.q + "</span>" + n.a + "</li>";
+          }).join("") +
+          '<li style="border-bottom:0"><b>Ownership</b>Three decisions, taken with reasoning — not because a system produced a green light and waited for a signature. That is the whole difference between control and rubber-stamping.</li>');
+        return;
+      }
+      var e = ACT2[i++];
+      list.insertAdjacentHTML("beforeend", "<li><b>" + e.by + '</b><span class="chip">' + ITEMS[e.id].chip + "</span>" + e.line + "</li>");
+      if (reduce) { step(); } else { setTimeout(step, 260); }
+    })();
+  }
+
+  /* ---------- wiring ---------- */
+  for (var i = 0; i < actBtns.length; i++) {
+    (function (b) {
+      b.addEventListener("click", function () { decide(b.getAttribute("data-act")); });
+    })(actBtns[i]);
+  }
+  missionForm.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var line = missionInput.value.replace(/^\s+|\s+$/g, "");
+    if (!line) {
+      missionErr.textContent = "No mission, no start. One line — goal and time frame.";
+      missionInput.focus();
+      return;
+    }
+    missionErr.textContent = "";
+    missionForm.setAttribute("hidden", "");
+    actsEl.removeAttribute("hidden");
+    actsEl.className = "acts";
+    S.held++;
+    S.used["3"] = (S.used["3"] || 0) + 1;
+    var it = currentItem();
+    var pair = (it && it.teach && it.teach.mission) || FALLBACK_MISSION;
+    teachEl.innerHTML = '<p class="tp">' + pair[0] + "</p><p>" + pair[1] + '</p><p class="verdict">Held at the gate: "' + line + '"</p>';
+    S.pending = null;
+    next();
+    render();
+  });
+  cancelBtn.addEventListener("click", cancelBypass);
+  resetBtn.addEventListener("click", function () {
+    if (bypassTimer) { clearTimeout(bypassTimer); bypassTimer = null; }
+    fresh();
+    teachEl.innerHTML = "";
+    missionForm.setAttribute("hidden", "");
+    bypassBox.setAttribute("hidden", "");
+    missionErr.textContent = "";
+    actsEl.removeAttribute("hidden");
+    actsEl.className = "acts";
+    resultEl.className = "result";
+    resultEl.innerHTML = "";
+    itemEl.textContent = "Three items at the neck is a good day. Start the stream and see what actually arrives.";
+    kickerEl.textContent = "waiting above the neck";
+    loadWave(0);
+    sim.scrollIntoView({ block: "start" });
+  });
+
+  /* ---------- go ---------- */
+  sim.removeAttribute("hidden");
+  fresh();
+  loadWave(0);
+})();
+</script>
+
+</body>
+</html>
